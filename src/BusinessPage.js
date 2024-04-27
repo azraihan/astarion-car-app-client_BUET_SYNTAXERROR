@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, IconButton, TextField, Button, Modal} from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 
-import { useParams } from 'react-router-dom';
+import { BrowserRouter, Route, Routes,useNavigate,useParams } from 'react-router-dom';
 
 const dummyData = [
   { id: 1, image: 'https://via.placeholder.com/150', text: 'Card 1 Text', isFavorite: false },
@@ -17,7 +17,9 @@ const dummyData = [
   { id: 10, image: 'https://via.placeholder.com/150', text: 'Card 5 Text', isFavorite: false },
 ];
 
-const UserPage = () => {
+const BusinessPage = () => {
+  const navigate= useNavigate();
+  
   const { username, id } = useParams();
   console.log(username);
 
@@ -39,6 +41,7 @@ const UserPage = () => {
 
 
   const fetchCars = async (seller_id) => {
+
     const url = `http://localhost:5000/api/seller/cars/${seller_id}`;
   
     try {
@@ -155,6 +158,11 @@ const UserPage = () => {
       setIsModalOpen(true);
     }
   };
+
+  const handleCarClick = (carId) => {
+    console.log(`Car clicked with ID: ${carId}`);
+    navigate(`/carPage/${carId}`)
+  };
   
 
   return (
@@ -171,7 +179,7 @@ const UserPage = () => {
     <div style={{ overflowX: 'auto', display: 'flex', alignItems: 'center', gap: '10px', padding: '20px', maxWidth:'100%' }}>
       {cars.map((item) => (
         <Card key={item._id} style={{ minWidth: '200px' }}>
-          <CardActionArea>
+          <CardActionArea onClick={() => handleCarClick(item._id)}>
             <CardMedia component="img" height="200" image={item.image_url} alt={`Card ${item.title}`} />
             <CardContent>
               <Typography variant="body2" color="textSecondary" component="p">
@@ -334,4 +342,4 @@ const UserPage = () => {
   );
 };
 
-export default UserPage;
+export default BusinessPage;

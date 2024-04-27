@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardActionArea, CardContent, CardMedia, Typography, Box, IconButton, TextField } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+
+import { BrowserRouter, Route, Routes,useNavigate } from 'react-router-dom';
 
 const dummyData = [
   { id: 1, image: 'https://via.placeholder.com/150', text: 'Card 1 Text', isFavorite: false },
@@ -16,7 +18,11 @@ const dummyData = [
 ];
 
 const UserPage = () => {
+
+  const navigate=useNavigate();
+  
   const [data, setData] = useState(dummyData);
+  const [cars, setCars] = useState([]);
 
   const handleFavoriteClick = (id) => {
     const updatedData = data.map(item => {
@@ -28,11 +34,52 @@ const UserPage = () => {
     setData(updatedData);
   };
 
+  const fetchCars = async () => {
+    const url = `http://localhost:5000/api/buyer/getAllCars`;
+  
+    try {
+      const response = await fetch(url);
+      const data = await response.json();  
+  
+      if (response.ok) {
+        //if (data.success && data.cars) {
+          console.log('Fetched cars successfully:', data);
+          return data; 
+        // } else {
+        //   throw new Error('No cars data found');
+        // }
+      } else {
+        throw new Error(data.message || 'Failed to fetch cars');
+      }
+    } catch (error) {
+      console.error('Error fetching cars:', error.message);
+      return []; 
+    }
+  };
+
+  useEffect(() => {
+    const loadCars = async () => {
+      try {
+        const fetchedCars = await fetchCars();
+        setCars(fetchedCars);
+      } catch (error) {
+        console.error('Failed to load cars:', error);
+      }
+    };
+    loadCars();
+  }, []); 
+
+  const handleCarClick = (carId) => {
+    console.log(`Car clicked with ID: ${carId}`);
+    navigate(`/carPage/${carId}`)
+  };
+  
+
   return (
     <div style={{display:'flex', flexDirection:'column', justifyContent:'center'}}>
 
 
-        {/* Available Car List*/}
+    {/* Available Car List*/}
     
 
     <div style={{display:'flex', flexDirection:'row', justifyContent:'center'}}>
@@ -40,20 +87,13 @@ const UserPage = () => {
         <div style={{left:0}}><h1>Available Cars</h1></div>
     <div style={{display:'flex', flexDirection:'row', justifyContent:'center'}}>
     <div style={{ overflowX: 'auto', display: 'flex', alignItems: 'center', gap: '10px', padding: '20px', maxWidth:'100%' }}>
-      {data.map((item) => (
-        <Card key={item.id} style={{ minWidth: '200px' }}>
-          <CardActionArea>
-            <CardMedia component="img" height="200" image={item.image} alt={`Card ${item.id}`} />
-            <IconButton
-              onClick={() => handleFavoriteClick(item.id)}
-              style={{ position: 'absolute', top: '10px', right: '10px', color: item.isFavorite ? 'red' : 'grey' }}
-              aria-label="add to favorites"
-            >
-              <FavoriteIcon />
-            </IconButton>
+      {cars.map((item) => (
+        <Card key={item._id} style={{ minWidth: '200px' }}>
+          <CardActionArea onClick={() => handleCarClick(item._id)}>
+            <CardMedia component="img" height="200" image={item.image_url} alt={`Card ${item.title}`} />
             <CardContent>
               <Typography variant="body2" color="textSecondary" component="p">
-                {item.text}
+                {item.title}
               </Typography>
             </CardContent>
           </CardActionArea>

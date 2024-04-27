@@ -1,12 +1,40 @@
-import React,{useState} from 'react';
+import React,{useEffect, useState} from 'react';
 import { Grid, TextField, Button, Box ,MenuItem, Modal} from '@mui/material';
 
-import { BrowserRouter, Route, Routes,useNavigate } from 'react-router-dom';
+import { BrowserRouter, Route, Routes,useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
+
+import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 
 
 function CarPage() {
-    //const navigate= useNavigate();
+    const navigate= useNavigate();
+
+    const {car_id}=useParams();
+
+
+    const fetchCarDetails = async (carId) => {
+      const url = `http://localhost:5000/api/seller/cars/info/${carId}`;
+    
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+    
+        if (response.ok) {
+          console.log('Car details fetched successfully:', data);
+          return data;
+        } else {
+          throw new Error(data.message || 'Failed to fetch car details');
+        }
+      } catch (error) {
+        console.error('Error fetching car details:', error.message);
+        throw error;
+      }
+    };
+
+    const [car, setCar]= useState(null)
+    
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -14,6 +42,11 @@ function CarPage() {
 
     const [openModal, setOpenModal] = useState(false);
     const [selectedPaymentOption, setSelectedPaymentOption] = useState(null);
+
+    const [openPdfModal, setOpenPdfModal] = useState(false);
+
+const handleOpenPdfModal = () => setOpenPdfModal(true);
+const handleClosePdfModal = () => setOpenPdfModal(false);
 
 
     const [isLoggingIn, setIsLogginIn]= useState(true);
@@ -29,6 +62,16 @@ function CarPage() {
 
     const handleRoleChange = (event)=>{
         setRole(event.target.value);
+
+    }
+
+    useEffect(() => {
+      fetchCarDetails(car_id).then(setCar).catch(console.log("Error"));
+    }, [car_id]);
+
+
+    if (!car) {
+      return <div>Loading...</div>;
     }
   
     const handleLoginClick = async () => {
@@ -48,6 +91,26 @@ function CarPage() {
     //   }
     };
 
+    const generatePdfDocument = async (car) => {
+      const doc = new jsPDF();
+      doc.text(car.title, 10, 10);
+      doc.text(`Price: $${car.price}`, 10, 20);
+      doc.text(car.description, 10, 30);
+    
+      // Convert image URL to canvas and then to PNG data URL
+      if (car.image_url) {
+        try {
+          const dataUrl = await toPng(document.getElementById('carImage'));
+          doc.addImage(dataUrl, 'PNG', 10, 40, 180, 160);
+        } catch (error) {
+          console.error('Failed to load image', error);
+        }
+      }
+    
+      // Save the created PDF
+      doc.save('car-details.pdf');
+    };
+
     const handleLoginRegisterClick=async()=>{
         setIsLogginIn(!isLoggingIn);
         setIsRegistering(!isRegistering);
@@ -60,10 +123,63 @@ function CarPage() {
     const handleCloseModal = () => {
       setOpenModal(false);
     };
+
+    const postCarPurchaseRequest = async (carId) => {
+      const url = `http://localhost:5000/api/buyer/cars/${carId}/request`;
     
-    const handlePaymentOptionSelect = (option) => {
-      setSelectedPaymentOption(option);
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Include authorization token if needed:
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          //body: JSON.stringify(buyerData)
+        });
+    
+        const data = await response.json();
+    
+        if (response.ok) {
+          console.log('Car purchase request submitted successfully:', data);
+          return data;
+        } else {
+          throw new Error(data.message || 'Failed to submit car purchase request');
+        }
+      } catch (error) {
+        console.error('Error submitting car purchase request:', error.message);
+        throw error;  // Rethrow the error for further handling if necessary
+      }
     };
+    
+
+
+    const handleBuyCar = async (carId) => {
+    
+      try {
+        const result = await postCarPurchaseRequest(carId);
+        console.log('Purchase successful:', result);
+        // Handle further actions like redirecting or showing a success message
+      } catch (error) {
+        console.error('Purchase failed:', error);
+        //Handle errors, e.g., by showing an error message to the user
+      }
+    };
+    
+    const handlePaymentOptionSelect = async (option) => {
+      setSelectedPaymentOption(option);
+
+      handleBuyCar(car_id);
+    
+      // Generate PDF
+      await generatePdfDocument(car);
+    
+      // Open modal to show PDF
+      handleOpenPdfModal();
+    };
+    
+
+
     
 
 
@@ -96,7 +212,7 @@ function CarPage() {
       zIndex: 2, 
     }}
   >
-    <img src="dummy_car.jpg" alt="Dummy Car" style={{ maxWidth: '80%', maxHeight: '100%', objectFit: 'cover', borderRadius: '20px', opacity: 1 }} />
+    <img src={car.image_url} alt={car.title} style={{ maxWidth: '80%', maxHeight: '100%', objectFit: 'cover', borderRadius: '20px', opacity: 1 }} />
   </Box>
 
   <Box
@@ -106,7 +222,7 @@ function CarPage() {
       left: 0,
       width: '100%',
       height: '100%',
-      backgroundImage: `url(dummy_car.jpg)`,
+      backgroundImage: `url(${car.image_url})`,
       backgroundColor:'rgb(0,0,0)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
@@ -121,8 +237,11 @@ function CarPage() {
 
         <Grid item xs={5} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255, 0.8)' }}>
   <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '80%', padding: '20px', borderRadius: '10px', boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.1)' }}>
-    <h2>Car Name</h2>
-    <p>Description of the car goes here.</p>
+    <h2>{car.title}</h2>
+    <p>{car.description}</p>
+    <p>Price: {car.price}</p>
+    <p>Seller: {car.seller_id.name}</p>
+    <p>Model: {car.model_no}</p>
     {/* Additional details for the car */}
     <Button variant="contained" onClick={handleOpenModal}>Buy</Button>
     <Modal open={openModal} onClose={handleCloseModal}>
@@ -135,6 +254,20 @@ function CarPage() {
         
       </Box>
     </Modal>
+
+    <Modal open={openPdfModal} onClose={handleClosePdfModal}>
+  <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.1)' }}>
+    <h3>Car Purchase Agreement</h3>
+    <iframe src="car-details.pdf" width="100%" height="400px"></iframe>
+    <Button variant="contained" onClick={() => {
+      const link = document.createElement('a');
+      link.href = 'car-details.pdf';
+      link.download = 'car-details.pdf';
+      link.dispatchEvent(new MouseEvent('click'));
+    }}>Download PDF</Button>
+  </Box>
+</Modal>
+
   </Box>
 </Grid>
 

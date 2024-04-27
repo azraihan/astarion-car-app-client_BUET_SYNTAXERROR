@@ -2,6 +2,7 @@ import React,{useState, useEffect} from 'react';
 import LandingPage from './LandingPage';
 import BusinessPage from './BusinessPage';
 import UserPage from './UserPage';
+import CarPage from './CarPage';
 
 import { BrowserRouter, Route, Routes,useNavigate } from 'react-router-dom';
 
@@ -26,6 +27,7 @@ function App() {
              <Route path='/' element={<LandingPage authenticate={authenticate} getUserName={getUserName}/>}/>
              <Route path="/businesspage/:username/:id" element={<BusinessPage/>}/>
              <Route path="/userpage/:username/:id" element={<UserPage/>}/>
+             <Route path="/carPage/:car_id" element={<CarPage/>}/>
         </Routes>
     </BrowserRouter>
   );
