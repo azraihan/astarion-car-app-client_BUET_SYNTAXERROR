@@ -1,22 +1,40 @@
-import React,{useState} from 'react';
-import { Grid, TextField, Button, Box ,MenuItem} from '@mui/material';
+import React,{useState, useEffect} from 'react';
+import { Grid, TextField, Button, Box ,MenuItem, Dialog, DialogTitle, DialogContent, DialogActions} from '@mui/material';
 
 import { BrowserRouter, Route, Routes,useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 
-function LandingPage() {
-    //const navigate= useNavigate();
+function LandingPage(authenticate, getUserName) {
+    const navigate= useNavigate();
 
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [role, setRole] = useState('');
 
     const [isLoggingIn, setIsLogginIn]= useState(true);
     const [isRegistering, setIsRegistering]= useState(false);
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loginError, setLoginError] = useState('');
+    const [dialogTitle, setDialogTitle] = useState('');
+
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    function replaceSpacesWithUnderscores(str) {
+      return str.replace(/ /g, '_');
+  }
+  
+
+
   
     const handleUsernameChange = (event) => {
       setUsername(event.target.value);
+    };
+
+    const handleEmailChange = (event) => {
+      setEmail(event.target.value);
     };
   
     const handlePasswordChange = (event) => {
@@ -28,21 +46,92 @@ function LandingPage() {
     }
   
     const handleLoginClick = async () => {
-    //   const requestBody = {
-    //     username: username,
-    //     password: password,
-    //   };
+      const requestBody = {
+        name: username,
+        password: password,
+      };
+    
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody),
+        });
+    
+        const data = await response.json();  // Parsing the JSON body of the response
 
-    //   try {
-    //     navigate(`/systemAdmin`)
-    //     const response = await axios.post('http://localhost:5000/auth/login', requestBody);
-    //     console.log('Login successful', response.data);
-    //     localStorage.setItem('token', response.data.token);
-    //     navigate(`/systemAdmin`)
-    //   } catch (error) {
-    //     console.error('Login failed', error);
-    //   }
+        const role= data.user.role==="seller"?"businesspage":"userpage";
+
+        const id= data.user._id;
+    
+        console.log(data);
+        console.log('Login successful', data);
+        console.log(data.success);
+        console.log(data.token);
+        if (data.success && data.token) {
+          localStorage.setItem('token', data.token); // Save the token to localStorage
+          console.log("Logged In");
+          setIsAuthenticated(true);
+          //authenticate(true);
+
+          //getUserName(username);
+          navigate(`/${role}/${replaceSpacesWithUnderscores(username)}/${id}`);
+        } else {
+          setLoginError('Unsuccessful login. Please check your username and/or password.');
+          setIsModalOpen(true); // Open modal if login is unsuccessful
+          setDialogTitle('Unsuccessful')
+        }
+      } catch (error) {
+        console.error('Login request failed', error);
+        setLoginError('Login request failed. Please try again later.');
+        setIsModalOpen(true); // Open modal if an error occurs
+        setDialogTitle('Error')
+      }
     };
+
+
+    const handleRegisterClick = async () => {
+      const requestBody = {
+        name: username, // Assuming the username state holds the name
+        email: email, // Make sure to have a separate state for email if it's different from the username
+        password: password,
+        role: role
+      };
+    
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/register', {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestBody),
+        });
+    
+        const data = await response.json(); // Parsing the JSON body of the response
+    
+        if (response.ok) {
+          console.log('Registration successful', data);
+          setLoginError("Registration successful");
+          setIsModalOpen(true); // Open modal to show the error
+          setDialogTitle('Successful')
+        } else {
+          throw new Error(data.message || 'Unable to register. Please try again later.');
+        }
+      } catch (error) {
+        console.error('Registration request failed', error);
+        setLoginError(error.message);
+        setIsModalOpen(true); // Open modal to show the error
+        setDialogTitle('Error')
+      }
+    };
+    
+    
+    
+    
+    
+    
 
     const handleLoginRegisterClick=async()=>{
         setIsLogginIn(!isLoggingIn);
@@ -73,6 +162,7 @@ function LandingPage() {
         }}>
     {isLoggingIn?"Register As New User":"Already have an account?"}
   </Button>
+
 </Box>
 
 
@@ -87,7 +177,7 @@ function LandingPage() {
             <TextField
               label="Username"
               variant="filled"
-              style={{backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+              style={{backgroundColor: 'rgba(181, 179, 179, 0.5)' }}
               onChange={handleUsernameChange}
             />
             </div>
@@ -118,23 +208,25 @@ function LandingPage() {
 
   {isRegistering && (
             <>
-            <div style={{borderRadius:'20px', overflow:'hidden',marginBottom: 20}}>
-            <TextField
-              label="Username"
-              variant="filled"
-              style={{backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
-              onChange={handleUsernameChange}
-            />
-            </div>
+            <div style={{ display: 'flex', gap: '20px', marginBottom:'20px' }}>
+  <div style={{ flex: 1, borderRadius: '20px', overflow: 'hidden' }}>
+    <TextField
+      label="Username"
+      variant="filled"
+      style={{ backgroundColor: 'rgba(181, 179, 179, 0.5)' }}
+      onChange={handleUsernameChange}
+    />
+  </div>
+  <div style={{ flex: 1, borderRadius: '20px', overflow: 'hidden' }}>
+    <TextField
+      label="Email"
+      variant="filled"
+      style={{ backgroundColor: 'rgba(181, 179, 179, 0.5)' }}
+      onChange={handleEmailChange}
+    />
+  </div>
+</div>
 
-            <div style={{borderRadius:'20px', overflow:'hidden',marginBottom: 20}}>
-            <TextField
-              label="Email"
-              variant="filled"
-              style={{backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
-              onChange={handleUsernameChange}
-            />
-            </div>
             
             <div style={{borderRadius:'20px', overflow:'hidden',marginBottom: 20}}>
             <TextField
@@ -152,7 +244,7 @@ function LandingPage() {
     label="Role"
     value={role}
     variant="filled"
-    style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)', borderRadius: '20px', width: '100%' }}
+    style={{ backgroundColor: 'rgba(181, 179, 179, 0.5)', borderRadius: '20px', width: '100%' }}
     onChange={handleRoleChange}
     SelectProps={{
       MenuProps: {
@@ -160,12 +252,12 @@ function LandingPage() {
       },
     }}
   >
-    <MenuItem value="Business">Business</MenuItem>
-    <MenuItem value="Customer">Customer</MenuItem>
+    <MenuItem value="Seller">Business</MenuItem>
+    <MenuItem value="Buyer">Customer</MenuItem>
   </TextField>
 </div>
             
-            <Button variant="contained" color="primary" onClick={handleLoginClick} sx={{
+            <Button variant="contained" color="primary" onClick={handleRegisterClick} sx={{
                         backgroundColor: '#cfcaca', // Button background color
                         '&:hover': {
                         backgroundColor: '#b5b0b0', // Button hover background color
@@ -179,6 +271,19 @@ function LandingPage() {
   </>
 
   )}
+
+<Dialog
+    open={isModalOpen}
+    onClose={() => setIsModalOpen(false)}
+  >
+    <DialogTitle><h2>{dialogTitle}</h2></DialogTitle>
+    <DialogContent>
+      <p>{loginError}</p>
+    </DialogContent>
+    <DialogActions>
+      <Button onClick={() => setIsModalOpen(false)}>Close</Button>
+    </DialogActions>
+  </Dialog>
 
           </Box>
         </Grid>
